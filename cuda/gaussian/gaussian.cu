@@ -56,7 +56,7 @@ float init_time = 0, mem_alloc_time = 0, h2d_time = 0, kernel_time = 0,
       d2h_time = 0, close_time = 0, total_time = 0;
 #endif
 
-int Size = 512;
+int Size;
 float *a, *b, *finalVec;
 float *m;
 
@@ -147,9 +147,7 @@ int main(int argc, char *argv[])
           switch (flag) {
             case 's': // platform
               i++;
-            //   Size = atoi(argv[i]);
-			Size = 512;
-
+              Size = atoi(argv[i]);
 	      printf("Create matrix internally in parse, size = %d \n", Size);
 
 	      a = (float *) malloc(Size * Size * sizeof(float));
@@ -380,12 +378,6 @@ void ForwardSub()
 	dim3 dimBlockXY(blockSize2d,blockSize2d);
 	dim3 dimGridXY(gridSize2d,gridSize2d);
 
-	printf("$$$$$ block: %d, %d, %d\n", dimBlock.x, dimBlock.y, dimBlock.z);
-	printf("$$$$$ grid:%d, %d, %d\n", dimGrid.x, dimGrid.y, dimGrid.z);
-
-
-
-
 #ifdef  TIMING
 	gettimeofday(&tv_kernel_start, NULL);
 #endif
@@ -394,15 +386,9 @@ void ForwardSub()
     struct timeval time_start;
     gettimeofday(&time_start, NULL);
 	for (t=0; t<(Size-1); t++) {
-		// Fan1<<<dimGrid,dimBlock>>>(m_cuda,a_cuda,Size,t);
-		void* args[] = {&m_cuda,&a_cuda,&Size,&t};
-		
-		cudaLaunchKernel((void*) &Fan1, dimGrid, dimBlock, args, 0, NULL);
+		Fan1<<<dimGrid,dimBlock>>>(m_cuda,a_cuda,Size,t);
 		cudaThreadSynchronize();
-		// Fan2<<<dimGridXY,dimBlockXY>>>(m_cuda,a_cuda,b_cuda,Size,Size-t,t);
-		int size_minus_t = Size - t;
-		void* argsTwo[] = {&m_cuda,&a_cuda,&b_cuda,&Size, &size_minus_t, &t};
-		cudaLaunchKernel((void*) &Fan2, dimGridXY, dimBlockXY, argsTwo, 0, NULL);
+		Fan2<<<dimGridXY,dimBlockXY>>>(m_cuda,a_cuda,b_cuda,Size,Size-t,t);
 		cudaThreadSynchronize();
 		checkCUDAError("Fan2");
 	}
@@ -510,4 +496,3 @@ void checkCUDAError(const char *msg)
         exit(EXIT_FAILURE);
     }                         
 }
-
